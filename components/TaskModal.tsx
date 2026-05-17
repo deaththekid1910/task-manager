@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface Props {
   open: boolean
   onClose: () => void
-  onSave: (data: { title: string; description: string; priority: Priority }) => void
+  onSave: (data: { title: string; description: string; priority: Priority; due_date: string | null }) => void
   task?: Task | null
 }
 
@@ -18,22 +18,30 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
+  const [dueDate, setDueDate] = useState('')
 
   useEffect(() => {
     if (task) {
       setTitle(task.title)
       setDescription(task.description || '')
       setPriority(task.priority)
+      setDueDate(task.due_date ? task.due_date.split('T')[0] : '')
     } else {
       setTitle('')
       setDescription('')
       setPriority('medium')
+      setDueDate('')
     }
   }, [task, open])
 
   const handleSave = () => {
     if (!title.trim()) return
-    onSave({ title, description, priority })
+    onSave({
+      title,
+      description,
+      priority,
+      due_date: dueDate ? new Date(dueDate).toISOString() : null
+    })
     onClose()
   }
 
@@ -61,6 +69,15 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
               placeholder="Detalles de la tarea..."
               rows={3}
               className="mt-1 w-full rounded-md bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Fecha límite (opcional)</Label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="mt-1 bg-slate-800 border-slate-700 text-white [color-scheme:dark]"
             />
           </div>
           <div>

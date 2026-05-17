@@ -8,6 +8,7 @@ export interface Task {
   description: string | null
   status: Status
   priority: Priority
+  due_date: string | null
   created_at: string
   updated_at: string
 }

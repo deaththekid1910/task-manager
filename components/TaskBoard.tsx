@@ -104,7 +104,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     }).eq('id', activeId)
   }
 
-  const handleCreate = async (data: { title: string; description: string; priority: Task['priority'] }) => {
+  const handleCreate = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
     const { data: newTask } = await supabase
       .from('tasks')
       .insert({ ...data, user_id: userId, status: 'todo' })
@@ -113,7 +113,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     if (newTask) setTasks(prev => [newTask, ...prev])
   }
 
-  const handleEdit = async (data: { title: string; description: string; priority: Task['priority'] }) => {
+  const handleEdit = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
     if (!editingTask) return
     const { data: updated } = await supabase
       .from('tasks')
@@ -129,7 +129,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     setTasks(prev => prev.filter(t => t.id !== id))
   }
 
-  const handleSave = (data: { title: string; description: string; priority: Task['priority'] }) => {
+  const handleSave = (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
     if (editingTask) handleEdit(data)
     else handleCreate(data)
   }
