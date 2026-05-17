@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation'
 import TaskBoard from '@/components/TaskBoard'
 import Link from 'next/link'
 
+export const revalidate = 0
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) redirect('/login')
 
   const { data: tasks } = await supabase
@@ -21,10 +22,10 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-4">
             <span className="text-2xl">📋</span>
             <nav className="flex gap-2">
-              <Link href="/dashboard" className="text-white text-sm px-3 py-1.5 rounded-lg bg-slate-800 transition-colors">
+              <Link prefetch={true} href="/dashboard" className="text-white text-sm px-3 py-1.5 rounded-lg bg-slate-800 transition-colors">
                 Tablero
               </Link>
-              <Link href="/dashboard/analytics" className="text-slate-400 hover:text-white text-sm px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link prefetch={true} href="/dashboard/analytics" className="text-slate-400 hover:text-white text-sm px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors">
                 Analytics
               </Link>
             </nav>
