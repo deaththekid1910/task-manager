@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Task, Priority } from '@/lib/types'
+import { Task, Priority, Subtask } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import SubtaskList from './SubtaskList'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   open: boolean
+  userId: string
   onClose: () => void
   onSave: (data: { title: string; description: string; priority: Priority; due_date: string | null; tags: string[] }) => void
   task?: Task | null
@@ -16,13 +19,15 @@ interface Props {
 
 const PRESET_TAGS = ['diseño', 'dev', 'marketing', 'urgente', 'revisión', 'bug', 'mejora']
 
-export default function TaskModal({ open, onClose, onSave, task }: Props) {
+export default function TaskModal({ open, userId, onClose, onSave, task }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
   const [dueDate, setDueDate] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [subtasks, setSubtasks] = useState<Subtask[]>([])
+  const supabase = createClient()
 
   useEffect(() => {
     if (task) {
@@ -31,12 +36,16 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
       setPriority(task.priority)
       setDueDate(task.due_date ? task.due_date.split('T')[0] : '')
       setTags(task.tags || [])
+      supabase.from('subtasks').select('*').eq('task_id', task.id).order('created_at').then(({ data }) => {
+        setSubtasks(data || [])
+      })
     } else {
       setTitle('')
       setDescription('')
       setPriority('medium')
       setDueDate('')
       setTags([])
+      setSubtasks([])
     }
     setTagInput('')
   }, [task, open])
@@ -132,6 +141,21 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
               ))}
             </div>
           </div>
+
+          {task && (
+            <div>
+              <Label className="text-slate-300 mb-2 block">Subtareas</Label>
+              <div className="bg-slate-800 rounded-lg p-3">
+                <SubtaskList
+                  taskId={task.id}
+                  userId={userId}
+                  subtasks={subtasks}
+                  onChange={setSubtasks}
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label className="text-slate-300">Prioridad</Label>
             <div className="flex gap-2 mt-1">

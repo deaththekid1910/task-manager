@@ -216,6 +216,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
 
       <TaskModal
         open={modalOpen}
+        userId={userId}
         onClose={() => { setModalOpen(false); setEditingTask(null) }}
         onSave={handleSave}
         task={editingTask}
