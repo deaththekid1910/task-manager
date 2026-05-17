@@ -16,7 +16,6 @@ function formatDate(dateStr: string | null) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const diff = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-
   if (diff < 0) return { label: `Venció hace ${Math.abs(diff)}d`, class: 'text-red-400' }
   if (diff === 0) return { label: 'Vence hoy', class: 'text-orange-400' }
   if (diff === 1) return { label: 'Vence mañana', class: 'text-yellow-400' }
@@ -33,14 +32,7 @@ export default function TaskCard({ task, onEdit, onDelete }: Props) {
   const priority = priorityConfig[task.priority]
   const dateInfo = formatDate(task.due_date)
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -70,6 +62,16 @@ export default function TaskCard({ task, onEdit, onDelete }: Props) {
 
         {task.description && (
           <p className="text-slate-400 text-xs mb-2 line-clamp-2">{task.description}</p>
+        )}
+
+        {task.tags && task.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {task.tags.map(tag => (
+              <span key={tag} className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
 
         {dateInfo && (

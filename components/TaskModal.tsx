@@ -10,15 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface Props {
   open: boolean
   onClose: () => void
-  onSave: (data: { title: string; description: string; priority: Priority; due_date: string | null }) => void
+  onSave: (data: { title: string; description: string; priority: Priority; due_date: string | null; tags: string[] }) => void
   task?: Task | null
 }
+
+const PRESET_TAGS = ['diseño', 'dev', 'marketing', 'urgente', 'revisión', 'bug', 'mejora']
 
 export default function TaskModal({ open, onClose, onSave, task }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
   const [dueDate, setDueDate] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
 
   useEffect(() => {
     if (task) {
@@ -26,13 +30,31 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
       setDescription(task.description || '')
       setPriority(task.priority)
       setDueDate(task.due_date ? task.due_date.split('T')[0] : '')
+      setTags(task.tags || [])
     } else {
       setTitle('')
       setDescription('')
       setPriority('medium')
       setDueDate('')
+      setTags([])
     }
+    setTagInput('')
   }, [task, open])
+
+  const addTag = (tag: string) => {
+    const clean = tag.trim().toLowerCase()
+    if (clean && !tags.includes(clean)) setTags(prev => [...prev, clean])
+    setTagInput('')
+  }
+
+  const removeTag = (tag: string) => setTags(prev => prev.filter(t => t !== tag))
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault()
+      addTag(tagInput)
+    }
+  }
 
   const handleSave = () => {
     if (!title.trim()) return
@@ -40,14 +62,15 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
       title,
       description,
       priority,
-      due_date: dueDate ? new Date(dueDate).toISOString() : null
+      due_date: dueDate ? new Date(dueDate).toISOString() : null,
+      tags,
     })
     onClose()
   }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border-slate-700 text-white">
+      <DialogContent className="bg-slate-900 border-slate-700 text-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? 'Editar tarea' : 'Nueva tarea'}</DialogTitle>
         </DialogHeader>
@@ -79,6 +102,35 @@ export default function TaskModal({ open, onClose, onSave, task }: Props) {
               onChange={(e) => setDueDate(e.target.value)}
               className="mt-1 bg-slate-800 border-slate-700 text-white [color-scheme:dark]"
             />
+          </div>
+          <div>
+            <Label className="text-slate-300">Etiquetas</Label>
+            <div className="mt-1 flex flex-wrap gap-1 mb-2">
+              {tags.map(tag => (
+                <span key={tag} className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs px-2 py-1 rounded-full">
+                  {tag}
+                  <button onClick={() => removeTag(tag)} className="hover:text-white">×</button>
+                </span>
+              ))}
+            </div>
+            <Input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribe y presiona Enter..."
+              className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+            />
+            <div className="flex flex-wrap gap-1 mt-2">
+              {PRESET_TAGS.filter(t => !tags.includes(t)).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => addTag(tag)}
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-2 py-1 rounded-full transition-colors"
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <Label className="text-slate-300">Prioridad</Label>

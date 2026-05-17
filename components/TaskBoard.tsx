@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { Task, Status } from '@/lib/types'
+import { useState, useMemo } from 'react'
+import { Task, Status, Priority } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import TaskModal from './TaskModal'
 import DroppableColumn from './DroppableColumn'
+import FilterBar from './FilterBar'
 import {
   DndContext,
   DragEndEvent,
@@ -43,7 +44,33 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [search, setSearch] = useState('')
+  const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all')
+  const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all')
+  const [filterTag, setFilterTag] = useState('all')
   const supabase = createClient()
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>()
+    tasks.forEach(t => t.tags?.forEach(tag => set.add(tag)))
+    return Array.from(set)
+  }, [tasks])
+
+  const filteredTasks = useMemo(() => {
+      return tasks.filter(t => {
+        const searchLower = search.toLowerCase().trim()
+        if (searchLower) {
+          const inTitle = t.title.toLowerCase().includes(searchLower)
+          const inDesc = t.description?.toLowerCase().includes(searchLower) ?? false
+          const inTags = t.tags?.some(tag => tag.toLowerCase().includes(searchLower)) ?? false
+          if (!inTitle && !inDesc && !inTags) return false
+        }
+        if (filterPriority !== 'all' && t.priority !== filterPriority) return false
+        if (filterStatus !== 'all' && t.status !== filterStatus) return false
+        if (filterTag !== 'all' && !t.tags?.includes(filterTag)) return false
+        return true
+      })
+    }, [tasks, search, filterPriority, filterStatus, filterTag])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -57,17 +84,13 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over) return
-
     const activeId = active.id as string
     const overId = over.id as string
-
     const activeTask = tasks.find(t => t.id === activeId)
     if (!activeTask) return
-
     const overColumn = columns.find(c => c.id === overId)
     const overTask = tasks.find(t => t.id === overId)
     const targetStatus = overColumn ? overColumn.id : overTask?.status
-
     if (targetStatus && activeTask.status !== targetStatus) {
       setTasks(prev => prev.map(t =>
         t.id === activeId ? { ...t, status: targetStatus as Status } : t
@@ -79,16 +102,13 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     const { active, over } = event
     setActiveTask(null)
     if (!over) return
-
     const activeId = active.id as string
     const overId = over.id as string
     const task = tasks.find(t => t.id === activeId)
     if (!task) return
-
     const overColumn = columns.find(c => c.id === overId)
     const overTask = tasks.find(t => t.id === overId)
     const targetStatus = overColumn ? overColumn.id : overTask?.status ?? task.status
-
     setTasks(prev => {
       const oldIndex = prev.findIndex(t => t.id === activeId)
       const newIndex = prev.findIndex(t => t.id === overId)
@@ -97,14 +117,13 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
       )
       return newIndex >= 0 ? arrayMove(updated, oldIndex, newIndex) : updated
     })
-
     await supabase.from('tasks').update({
       status: targetStatus,
       updated_at: new Date().toISOString()
     }).eq('id', activeId)
   }
 
-  const handleCreate = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
+  const handleCreate = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null; tags: string[] }) => {
     const { data: newTask } = await supabase
       .from('tasks')
       .insert({ ...data, user_id: userId, status: 'todo' })
@@ -113,7 +132,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     if (newTask) setTasks(prev => [newTask, ...prev])
   }
 
-  const handleEdit = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
+  const handleEdit = async (data: { title: string; description: string; priority: Task['priority']; due_date: string | null; tags: string[] }) => {
     if (!editingTask) return
     const { data: updated } = await supabase
       .from('tasks')
@@ -129,17 +148,21 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
     setTasks(prev => prev.filter(t => t.id !== id))
   }
 
-  const handleSave = (data: { title: string; description: string; priority: Task['priority']; due_date: string | null }) => {
+  const handleSave = (data: { title: string; description: string; priority: Task['priority']; due_date: string | null; tags: string[] }) => {
     if (editingTask) handleEdit(data)
     else handleCreate(data)
   }
 
+  const activeFilters = search || filterPriority !== 'all' || filterStatus !== 'all' || filterTag !== 'all'
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Mis Tareas</h2>
-          <p className="text-slate-400 text-sm mt-1">{tasks.length} tareas en total</p>
+          <p className="text-slate-400 text-sm mt-1">
+            {activeFilters ? `${filteredTasks.length} de ${tasks.length} tareas` : `${tasks.length} tareas en total`}
+          </p>
         </div>
         <Button
           onClick={() => { setEditingTask(null); setModalOpen(true) }}
@@ -148,6 +171,14 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
           + Nueva Tarea
         </Button>
       </div>
+
+      <FilterBar
+        search={search} onSearch={setSearch}
+        priority={filterPriority} onPriority={setFilterPriority}
+        status={filterStatus} onStatus={setFilterStatus}
+        tag={filterTag} onTag={setFilterTag}
+        allTags={allTags}
+      />
 
       <DndContext
         sensors={sensors}
@@ -164,7 +195,7 @@ export default function TaskBoard({ initialTasks, userId }: Props) {
               label={col.label}
               icon={col.icon}
               color={col.color}
-              tasks={tasks.filter(t => t.status === col.id)}
+              tasks={filteredTasks.filter(t => t.status === col.id)}
               onEdit={(t) => { setEditingTask(t); setModalOpen(true) }}
               onDelete={handleDelete}
             />
