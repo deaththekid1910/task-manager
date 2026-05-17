@@ -10,6 +10,14 @@ export interface Subtask {
   created_at: string
 }
 
+export interface Comment {
+  id: string
+  task_id: string
+  user_id: string
+  content: string
+  created_at: string
+}
+
 export interface Task {
   id: string
   user_id: string
@@ -20,6 +28,7 @@ export interface Task {
   due_date: string | null
   tags: string[]
   subtasks?: Subtask[]
+  comments?: Comment[]
   created_at: string
   updated_at: string
 }
